@@ -28,14 +28,19 @@ header h1{font-size:18px;margin:0}
 .layout{display:grid;grid-template-columns:1fr 340px;gap:12px}
 @media(max-width:850px){.layout{grid-template-columns:1fr}}
 .card{background:var(--card);border-radius:var(--r);padding:12px}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.dow{text-align:center;font-size:15px;font-weight:700;color:var(--mut);padding:6px}
-.day{min-height:140px;border:1px solid var(--line);border-radius:6px;padding:5px;cursor:pointer;overflow:hidden;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.dow{text-align:center;font-size:13px;font-weight:500;color:var(--mut);padding:6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.day{min-height:140px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 3px;cursor:pointer;overflow:hidden;font-size:13px}
 @media(max-width:600px){.day{min-height:80px;font-size:11px}}
-.day.other{opacity:.4}.day.today{border-color:var(--pri);border-width:2px}.day.sel{background:#eef}
-.day .n{font-size:15px;font-weight:700}
-.ev{border-radius:4px;padding:2px 5px;margin-top:3px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
-.ev.done{opacity:.45;text-decoration:line-through}
+.day.other .n{color:#aaa}.day.sel{background:#f3f6ff}
+.day .n{display:block;width:26px;height:26px;line-height:26px;margin:0 auto 2px;text-align:center;border-radius:50%;font-size:13px;font-weight:500}
+.day.today .n{background:#1a73e8;color:#fff}
+/* 구글 캘린더 스타일: 시간 없는 일정은 색 막대, 시간 있는 일정은 점 + 시간 + 제목 */
+.ev{border-radius:4px;padding:2px 6px;margin-top:2px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.ev.t{background:none!important;color:var(--tx);padding:2px 3px}
+.ev.t i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+.ev.t:hover,.ev:hover{filter:brightness(.95);background-color:#f1f3f4}
+.ev.done{opacity:.5;text-decoration:line-through}
 .item{border-bottom:1px solid var(--line);padding:8px 0;display:flex;gap:8px;align-items:flex-start}
 .item small{color:var(--mut)}
 .tag{font-size:11px;padding:1px 6px;border-radius:99px;color:#fff}
@@ -79,14 +84,21 @@ header h1{font-size:18px;margin:0}
     <button class="btn" data-add="personal">📝 개인 업무 기록</button>
     <button class="btn" data-add="note">📢 공지</button>
     <button class="btn" id="csv">📥 엑셀(CSV) 다운로드</button>
+    <button class="btn" id="weekBtn">🕒 주간 시간표</button>
     <button class="btn" id="view">목록 보기</button>
     <input id="q" type="search" placeholder="🔍 검색 (제목·업체·이름·메모)" style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;min-width:220px;flex:1;max-width:340px">
   </div>
   <div class="chips" id="chips"></div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin:-4px 0 12px;color:var(--mut)">
+    <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f6bf26;vertical-align:-1px"></i> 대표님 일정</span>
+    <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f6bf26;vertical-align:-1px"></i> 손님 방문</span>
+    <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#8e8e93;vertical-align:-1px"></i> 보고 일정</span>
+    <span>· 그 외(업무·휴가)는 담당자 색</span>
+  </div>
   <div class="summary" id="summary"></div>
 
   <div class="layout" id="calView">
-    <div class="card"><div class="grid" id="grid"></div></div>
+    <div class="card"><div class="grid" id="grid"></div><div id="weekGrid" class="hidden"></div></div>
     <div>
       <div class="card" id="dayPanel" style="margin-bottom:12px"></div>
       <div class="card" id="notePanel" style="margin-bottom:12px"></div>
@@ -114,14 +126,16 @@ const CATS = {
   "전자입찰":"#0d9488","식당":"#ea580c","일일매입":"#ca8a04","수주대장":"#be123c","기타":"#6b7280"
 };
 const REP={daily:"평일 매일",weekly:"매주",monthly:"매월"};
-const TYPE_COLOR={ceo:"#111827",vac:"#9ca3af",visit:"#f59e0b",report:"#dc2626",personal:"#0ea5e9"};
+const TYPE_COLOR={ceo:"#f6bf26",vac:"#9ca3af",visit:"#f6bf26",report:"#8e8e93",personal:"#0ea5e9"};
+// 노란색 막대 위 글씨는 어두운 색으로 (흰 글씨는 안 읽힘)
+const txtColor=i=>["ceo","visit"].includes(i.type)?"#3b2f00":"#fff";
 const $=s=>document.querySelector(s);
 const pad=n=>String(n).padStart(2,"0");
 const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let state={items:[]}, cur=new Date(); cur.setDate(1);
-let sel=ymd(new Date()), filter="전체", listMode=false, q="";
+let sel=ymd(new Date()), filter="전체", listMode=false, q="", weekMode=false;
 
 /* ===== 잠금 ===== */
 async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
@@ -178,11 +192,13 @@ function onDay(i,d){
 const PERSON_COLOR={"진슬기":"#4f46e5","허다교":"#059669","김정화":"#db2777"};
 const tagColor=i=>TYPE_COLOR[i.type]||(CATS[i.cat]||"#6b7280");
 // 달력 막대 색 = 담당자 색 (공지 등 담당자 없으면 분류 색)
-const color=i=>PERSON_COLOR[i.who]||tagColor(i);
+// 대표님 일정·손님 방문·보고 일정은 담당자와 상관없이 고정 색, 나머지는 담당자 색
+const color=i=>["ceo","visit","report"].includes(i.type)?TYPE_COLOR[i.type]:(PERSON_COLOR[i.who]||tagColor(i));
 
 /* ===== 렌더 ===== */
 function render(){
-  $("#mlabel").textContent=`${cur.getFullYear()}년 ${cur.getMonth()+1}월`;
+  $("#mlabel").textContent=(weekMode&&!listMode&&!q)?weekLabel():`${cur.getFullYear()}년 ${cur.getMonth()+1}월`;
+  $("#weekBtn").textContent=weekMode?"📅 월간 달력":"🕒 주간 시간표";
   $("#chips").innerHTML=["전체",...CONFIG.TEAM].map(n=>`<button class="chip ${n===filter?"on":""}" data-f="${n}" style="${PERSON_COLOR[n]?`border-color:${PERSON_COLOR[n]};${n===filter?`background:${PERSON_COLOR[n]}`:`color:${PERSON_COLOR[n]}`}`:""}">${PERSON_COLOR[n]?"● ":""}${n}</button>`).join("");
   const mk=ymd(cur).slice(0,7), items=state.items;
   const tasks=items.filter(i=>i.type==="task"&&i.date.startsWith(mk));
@@ -193,7 +209,10 @@ function render(){
    `<div><b>${items.filter(t=>t.type==="task"&&!t.done&&!t.repeat&&t.date<today).length}</b>기한 지남</div>`+
    `<div><b>${items.filter(i=>i.type==="vac"&&onDay(i,today)).map(i=>i.who).length}</b>오늘 부재</div>`;
   const showList=listMode||!!q;
-  showList?renderList():renderCal();
+  const showWeek=weekMode&&!showList;
+  if(showList)renderList(); else if(showWeek)renderWeek(); else renderCal();
+  $("#grid").classList.toggle("hidden",showWeek);
+  $("#weekGrid").classList.toggle("hidden",!showWeek);
   $("#calView").classList.toggle("hidden",showList);
   $("#listView").classList.toggle("hidden",!showList);
   $("#view").textContent=listMode?"달력 보기":"목록 보기";
@@ -204,14 +223,60 @@ function renderCal(){
   let h=["일","월","화","수","목","금","토"].map(d=>`<div class="dow">${d}</div>`).join("");
   for(let i=0;i<42;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);const k=ymd(d);
-    const evs=vis().filter(x=>onDay(x,k)).sort((a,b)=>(a.tstart||a.time||"99").localeCompare(b.tstart||b.time||"99"));
+    // 시간 없는 일정(막대) 먼저, 그 다음 시간 순
+    const evs=vis().filter(x=>onDay(x,k)).sort((a,b)=>(a.tstart?"1"+a.tstart:"0").localeCompare(b.tstart?"1"+b.tstart:"0"));
+    const ko=t=>{const [hh,mm]=t.split(":").map(Number);return (hh<12?"오전 ":"오후 ")+(hh%12||12)+":"+pad(mm||0)};
     h+=`<div class="day ${d.getMonth()!==cur.getMonth()?"other":""} ${k===ymd(new Date())?"today":""} ${k===sel?"sel":""}" data-d="${k}">
       <div class="n">${d.getDate()}</div>
-      ${evs.slice(0,5).map(e=>`<div class="ev ${isDone(e,k)?"done":""}" style="background:${color(e)}">${{ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"}[e.type]||""}${esc(e.who&&(e.type==="task"||e.type==="vac")?e.who[0]+" ":"")}${esc((e.tstart?e.tstart+" ":"")+e.title)}</div>`).join("")}
-      ${evs.length>5?`<div style="color:var(--mut)">+${evs.length-5}건 더</div>`:""}</div>`;
+      ${evs.slice(0,6).map(e=>{
+        const label=({ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"}[e.type]||"")+(e.who&&["task","vac","visit","report"].includes(e.type)?e.who[0]+" ":"")+e.title;
+        return e.tstart
+          ?`<div class="ev t ${isDone(e,k)?"done":""}" data-edit="${e.id}" title="${esc(e.title)}"><i style="background:${color(e)}"></i>${ko(e.tstart)} ${esc(label)}</div>`
+          :`<div class="ev ${isDone(e,k)?"done":""}" data-edit="${e.id}" title="${esc(e.title)}" style="background:${color(e)};color:${txtColor(e)}">${esc(label)}</div>`}).join("")}
+      ${evs.length>6?`<div style="color:var(--mut);font-size:12px;padding:2px 3px">+${evs.length-6}건 더</div>`:""}</div>`;
   }
   $("#grid").innerHTML=h;
 }
+/* ===== 주간 시간표 (구글 캘린더처럼 시간대별 배치) ===== */
+const WK_H0=7, WK_H1=22, WK_PX=48;
+const toMin=t=>{const [h,m]=t.split(":").map(Number);return h*60+(m||0)};
+function weekStart(){const s=new Date(sel+"T00:00:00");s.setDate(s.getDate()-s.getDay());return s}
+function weekLabel(){const s=weekStart(),e=new Date(s);e.setDate(s.getDate()+6);
+  return `${s.getMonth()+1}/${s.getDate()} ~ ${e.getMonth()+1}/${e.getDate()}`}
+function shiftWeek(n){const d=new Date(sel+"T00:00:00");d.setDate(d.getDate()+n);sel=ymd(d);cur=new Date(d.getFullYear(),d.getMonth(),1)}
+const ICON={ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"};
+function evLabel(e){return (ICON[e.type]||"")+(e.who&&["task","vac","visit","report"].includes(e.type)?e.who[0]+" ":"")+e.title}
+function renderWeek(){
+  const s=weekStart(), days=[...Array(7)].map((_,i)=>{const d=new Date(s);d.setDate(s.getDate()+i);return d});
+  const hrs=[];for(let h=WK_H0;h<WK_H1;h++)hrs.push(h);
+  const cols="50px repeat(7,minmax(90px,1fr))";
+  let h=`<div style="overflow-x:auto"><div style="min-width:780px">`;
+  h+=`<div style="display:grid;grid-template-columns:${cols}"><div></div>`+days.map(d=>{const k=ymd(d);
+    return `<div class="dow" data-d="${k}" style="cursor:pointer;${k===sel?"color:var(--pri)":""}${k===ymd(new Date())?";background:#eef;border-radius:6px":""}">${"일월화수목금토"[d.getDay()]} ${d.getDate()}</div>`}).join("")+`</div>`;
+  // 시간 미지정(종일) 줄
+  h+=`<div style="display:grid;grid-template-columns:${cols};border-top:1px solid var(--line)"><div style="font-size:11px;color:var(--mut);padding:4px">시간 없음</div>`+
+    days.map(d=>{const k=ymd(d);
+      const evs=vis().filter(x=>onDay(x,k)&&!x.tstart);
+      return `<div data-d="${k}" style="border-left:1px solid var(--line);padding:2px;min-height:30px">`+
+        evs.map(e=>`<div class="ev ${isDone(e,k)?"done":""}" data-edit="${e.id}" style="background:${color(e)};color:${txtColor(e)}">${esc(evLabel(e))}</div>`).join("")+`</div>`}).join("")+`</div>`;
+  // 시간표
+  h+=`<div style="display:grid;grid-template-columns:${cols};border-top:1px solid var(--line)">`;
+  h+=`<div>`+hrs.map(hr=>`<div style="height:${WK_PX}px;font-size:11px;color:var(--mut);text-align:right;padding-right:6px;transform:translateY(-7px)">${pad(hr)}:00</div>`).join("")+`</div>`;
+  days.forEach(d=>{
+    const k=ymd(d), H=(WK_H1-WK_H0)*WK_PX;
+    const evs=vis().filter(x=>onDay(x,k)&&x.tstart).sort((a,b)=>a.tstart.localeCompare(b.tstart))
+      .map(e=>{let st=Math.max(toMin(e.tstart),WK_H0*60), en=e.tend?toMin(e.tend):toMin(e.tstart)+60;
+        en=Math.min(Math.max(en,st+30),WK_H1*60);return {e,st,en,l:0}});
+    const lanes=[];
+    evs.forEach(o=>{let l=lanes.findIndex(x=>x<=o.st);if(l<0){l=lanes.length;lanes.push(0)}lanes[l]=o.en;o.l=l});
+    const n=lanes.length||1;
+    h+=`<div data-d="${k}" style="position:relative;border-left:1px solid var(--line);height:${H}px;background:repeating-linear-gradient(to bottom,transparent 0,transparent ${WK_PX-1}px,var(--line) ${WK_PX-1}px,var(--line) ${WK_PX}px)">`+
+      evs.map(o=>{const top=(o.st-WK_H0*60)/60*WK_PX, ht=Math.max((o.en-o.st)/60*WK_PX-2,18);
+        return `<div data-edit="${o.e.id}" title="${esc(o.e.title)}" class="${isDone(o.e,k)?"done":""}" style="position:absolute;top:${top}px;height:${ht}px;left:calc(${o.l*100/n}% + 1px);width:calc(${100/n}% - 3px);background:${color(o.e)};color:${txtColor(o.e)};border-radius:5px;font-size:12px;line-height:1.3;padding:2px 4px;overflow:hidden;cursor:pointer;${isDone(o.e,k)?"opacity:.5;":""}"><b>${o.e.tstart}${o.e.tend?"~"+o.e.tend:""}</b><br>${esc(evLabel(o.e))}</div>`}).join("")+`</div>`});
+  h+=`</div></div></div>`;
+  $("#weekGrid").innerHTML=h;
+}
+
 function itemRow(i,d=sel){
   const lbl={task:i.cat||"업무",vac:i.vacType||"휴가",ceo:"대표님",visit:"손님 방문",report:"보고",personal:"개인 기록",note:"공지"}[i.type];
   return `<div class="item">
@@ -314,8 +379,9 @@ document.addEventListener("change",e=>{
     save()}
   if(dt.chk){const [id,n]=dt.chk.split(":");const i=state.items.find(x=>x.id===id);i.checks[+n].d=e.target.checked;save()}
 });
-$("#prev").onclick=()=>{cur.setMonth(cur.getMonth()-1);render()};
-$("#next").onclick=()=>{cur.setMonth(cur.getMonth()+1);render()};
+$("#prev").onclick=()=>{if(weekMode&&!listMode&&!q)shiftWeek(-7);else cur.setMonth(cur.getMonth()-1);render()};
+$("#next").onclick=()=>{if(weekMode&&!listMode&&!q)shiftWeek(7);else cur.setMonth(cur.getMonth()+1);render()};
+$("#weekBtn").onclick=()=>{weekMode=!weekMode;listMode=false;render()};
 $("#today").onclick=()=>{cur=new Date();cur.setDate(1);sel=ymd(new Date());render()};
 $("#q").oninput=e=>{q=e.target.value.trim();render()};
 $("#view").onclick=()=>{listMode=!listMode;render()};
