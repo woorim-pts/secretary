@@ -76,12 +76,29 @@ td{font-variant-numeric:tabular-nums}
   .num small{display:inline}
   .ev{font-size:17px}.tr{font-size:17px}
 }
+#lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+[hidden]{display:none!important}
+.lock-card{background:var(--head);padding:28px;border-radius:14px;width:min(340px,100%);text-align:center}
+.lock-card h2{font-size:22px;margin:0 0 6px}
+.lock-card p{margin:0 0 12px;color:var(--muted);font-size:15px}
+.lock-card input{width:100%;box-sizing:border-box;padding:12px;font-size:20px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);margin-bottom:10px}
+.lock-card button{width:100%;padding:12px;font-size:17px;font-weight:700;border:0;border-radius:8px;background:var(--ceo);color:var(--chip-fg);cursor:pointer}
+#lockMsg{color:var(--sun);margin:10px 0 0;min-height:1.2em}
 @media print{.legend{display:none}}
 </style>
 
 </head>
 <body>
-<div class="wrap">
+<div id="lock">
+  <form id="lockForm" class="lock-card">
+    <h2>대표님 스케줄</h2>
+    <p>비밀번호를 입력해 주세요.</p>
+    <input id="pw" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호" required>
+    <button type="submit">들어가기</button>
+    <p id="lockMsg"></p>
+  </form>
+</div>
+<div class="wrap" id="app" hidden>
   <header>
     <h1>월간 대표님 SCHEDULE<span>(11월)</span></h1>
     <div class="input-date">입력일: 2026.11.09.(월)</div>
@@ -130,6 +147,13 @@ td{font-variant-numeric:tabular-nums}
 </div>
 
 <script>
+const PW_HASH="6c25c8f454fea8dd5cd0b201b4f739993aebfc454de7b410ee9457c553699a85";
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function unlock(){document.getElementById("lock").hidden=true;document.getElementById("app").hidden=false}
+document.getElementById("lockForm").onsubmit=async e=>{e.preventDefault();
+  if(await sha(document.getElementById("pw").value.trim())===PW_HASH){try{localStorage.setItem("ceo_ok",PW_HASH)}catch{};unlock()}
+  else document.getElementById("lockMsg").textContent="비밀번호가 맞지 않습니다."};
+try{if(localStorage.getItem("ceo_ok")===PW_HASH)unlock()}catch{}
 // kind: c=대표님, t=임시, v=손님방문, tr=양도(color: pink|green|blue)
 const C=(l,...x)=>({k:'c',l,x}), T=(...x)=>({k:'t',l:'임시',x}), V=(...x)=>({k:'v',l:'손님방문',x});
 const R=(l,color,...x)=>({k:'tr',l,color,x});
