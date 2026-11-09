@@ -32,6 +32,19 @@ header h1{font-size:18px;margin:0}
 .dow{text-align:center;font-size:13px;font-weight:500;color:var(--mut);padding:6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .day{min-height:140px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 3px;cursor:pointer;overflow:hidden;font-size:13px}
 @media(max-width:600px){.day{min-height:80px;font-size:11px}}
+/* 모바일 순서: 오늘(선택한 날) 일정 → 필터 → 달력 → 업무추가 등 버튼 → 요약 → 공지·인원별 */
+#todayBox{display:none}
+@media(max-width:850px){
+  .wrap{display:flex;flex-direction:column}
+  #todayBox{display:block;order:1;margin-bottom:12px}
+  #chips{order:2}.legend{order:3}
+  .layout{display:contents}
+  .layout>.card:first-child{order:4;margin-bottom:12px}
+  #listView{order:4;margin-bottom:12px}
+  .bar{order:5}.summary{order:6}
+  .layout>div:last-child{order:7}
+  #dayPanel{display:none}
+}
 .day.other .n{color:#aaa}.day.sel{background:#f3f6ff}
 .day .n{display:block;width:26px;height:26px;line-height:26px;margin:0 auto 2px;text-align:center;border-radius:50%;font-size:13px;font-weight:500}
 .day.today .n{background:#1a73e8;color:#fff}
@@ -75,6 +88,7 @@ header h1{font-size:18px;margin:0}
 </header>
 
 <div class="wrap">
+  <div class="card" id="todayBox"></div>
   <div class="bar">
     <button class="btn primary" data-add="task">+ 업무 추가</button>
     <button class="btn" data-add="vac">🌴 휴가·부재</button>
@@ -89,7 +103,7 @@ header h1{font-size:18px;margin:0}
     <input id="q" type="search" placeholder="🔍 검색 (제목·업체·이름·메모)" style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;min-width:220px;flex:1;max-width:340px">
   </div>
   <div class="chips" id="chips"></div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin:-4px 0 12px;color:var(--mut)">
+  <div class="legend" style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin:-4px 0 12px;color:var(--mut)">
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1a73e8;vertical-align:-1px"></i> 대표님 일정</span>
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f6bf26;vertical-align:-1px"></i> 손님 방문</span>
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#8e8e93;vertical-align:-1px"></i> 보고 일정</span>
@@ -298,6 +312,7 @@ function renderSide(){
   $("#dayPanel").innerHTML=`<h3 style="margin-top:0">${sel}</h3>`+(ds.map(x=>itemRow(x)).join("")||`<small>일정이 없습니다.</small>`)+
     `<br><button class="btn primary" data-add="task" data-date="${sel}">+ 이 날짜에 추가</button>`;
   const notes=state.items.filter(i=>i.type==="note");
+  $("#todayBox").innerHTML=`<div style="font-size:12px;color:var(--mut)">${sel===ymd(new Date())?"📌 오늘 일정":"선택한 날짜 일정"}</div>`+$("#dayPanel").innerHTML;
   $("#peoplePanel").innerHTML=`<h3 style="margin-top:0">👥 인원별 해야 할 일</h3>`+CONFIG.TEAM.map(n=>{
     const t=state.items.filter(i=>i.type==="task"&&i.who===n&&(i.repeat||!i.done)).sort((a,b)=>a.date.localeCompare(b.date));
     return `<div style="margin-bottom:10px"><b style="color:${PERSON_COLOR[n]}">● ${n}</b> <small>(${t.length}건)</small>`+
