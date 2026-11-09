@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대표님 월간 스케줄</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: 7-column monthly grid like the original spreadsheet; below 760px it becomes a day-by-day agenda */
+:root{
+  --bg:#ffffff; --fg:#111418; --muted:#5b6470; --line:#b9c0c9; --head:#e4e7eb;
+  --sun:#e60000; --sat:#0070c0;
+  --ceo:#00b0f0; --tmp:#92d050; --visit:#ffe600; --chip-fg:#0b1a24;
+  --tr-red:#e00000; --pink:#ffcccc; --green:#e2efda; --blue:#ddebf7;
+  --today:#ff9f00; --font:'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161b; --fg:#f1f3f5; --muted:#9aa4b0; --line:#3a424c; --head:#222931;
+  --sun:#ff6b6b; --sat:#5fb2ff; --tr-red:#ff7b7b;
+  --pink:#4d2a2f; --green:#2b4228; --blue:#22384f; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#12161b; --fg:#f1f3f5; --muted:#9aa4b0; --line:#3a424c; --head:#222931;
+  --sun:#ff6b6b; --sat:#5fb2ff; --tr-red:#ff7b7b;
+  --pink:#4d2a2f; --green:#2b4228; --blue:#22384f; color-scheme:dark;}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);
+  padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+.wrap{max-width:1400px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:8px 24px;flex-wrap:wrap;margin-bottom:10px}
+h1{margin:0;font-size:clamp(22px,3.2vw,34px);font-weight:900;letter-spacing:.01em}
+h1 span{font-weight:500;margin-left:.4em}
+.input-date{font-size:clamp(15px,1.8vw,20px);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 12px;font-size:14px;color:var(--muted)}
+.legend i{display:inline-block;width:42px;height:18px;vertical-align:middle;margin-right:6px;border-radius:2px}
+
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px dashed var(--line)}
+.dow{background:var(--head);text-align:center;font-weight:700;font-size:16px;padding:6px 0;border-right:1px dashed var(--line);border-bottom:1px solid var(--line)}
+.dow.sun{color:var(--sun)} .dow.sat{color:var(--sat)}
+.day{min-height:150px;padding:4px 0 8px;border-right:1px dashed var(--line);border-bottom:1px dashed var(--line);min-width:0}
+.day.empty{background:transparent}
+.num{font-size:22px;font-weight:900;line-height:1.1;padding:0 6px 3px;display:flex;align-items:baseline;gap:6px}
+.num small{display:none;font-size:15px;font-weight:700}
+.sun .num{color:var(--sun)} .sat .num{color:var(--sat)}
+.today{outline:3px solid var(--today);outline-offset:-3px;position:relative}
+.today .num::after{content:"오늘";font-size:12px;font-weight:700;background:var(--today);color:#111;border-radius:3px;padding:1px 6px}
+
+.ev{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:start;padding:1px 0;font-size:16px;line-height:1.35}
+.ev .chip{font-weight:700;padding:1px 8px;min-width:54px;text-align:center;color:var(--chip-fg);white-space:nowrap}
+.ev .chip.ceo{background:var(--ceo)} .ev .chip.tmp{background:var(--tmp)} .ev .chip.visit{background:var(--visit)}
+.ev .txt{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.ev .txt b{font-weight:700}
+.ev .txt div+div{margin-top:0}
+.ev.noch .txt{grid-column:2}
+.tr{padding:2px 6px 3px;margin:2px 0;font-size:16px;line-height:1.35;font-weight:500}
+.tr .lbl{color:var(--tr-red);font-weight:700}
+.pill{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;color:var(--fg);background:var(--bg);border:1px solid var(--tr-red);border-radius:10px;padding:0 7px;vertical-align:1px}
+.tr.pink{background:var(--pink)} .tr.green{background:var(--green)} .tr.blue{background:var(--blue)}
+
+.lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:24px;margin-top:22px;align-items:start}
+h2{font-size:18px;margin:0 0 8px;font-weight:700}
+.rules{margin:0;padding:0;list-style:none;font-size:15px;line-height:1.75}
+.rules li{display:grid;grid-template-columns:5em 1fr;gap:8px}
+.rules em{font-style:normal;color:var(--muted)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:520px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;vertical-align:middle}
+th{background:var(--head);font-weight:700}
+td.left{text-align:left}
+td{font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--muted);margin:6px 0 0}
+
+@media (max-width:900px){.lower{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){
+  .cal{display:block;border-left:0;border-top:0}
+  .dow,.day.empty,.day.none{display:none}
+  .day{min-height:0;border:1px solid var(--line);border-radius:6px;margin-bottom:8px;padding:6px 0 8px}
+  .num small{display:inline}
+  .ev{font-size:17px}.tr{font-size:17px}
+}
+@media print{.legend{display:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>월간 대표님 SCHEDULE<span>(11월)</span></h1>
+    <div class="input-date">입력일: 2026.11.09.(월)</div>
+  </header>
+  <p class="legend">
+    <span><i style="background:var(--ceo)"></i>대표님 일정</span>
+    <span><i style="background:var(--tmp)"></i>임시 라운딩</span>
+    <span><i style="background:var(--visit)"></i>손님방문</span>
+    <span><i style="background:var(--pink)"></i><i style="background:var(--green);margin-left:-6px"></i><i style="background:var(--blue);margin-left:-6px"></i><b style="color:var(--tr-red)">양도</b></span>
+  </p>
+  <div class="cal" id="cal"></div>
+
+  <div class="lower">
+    <section>
+      <h2>정기 모임</h2>
+      <ul class="rules">
+        <li><b>그린24</b><span><em>첫째 주 화요일</em></span></li>
+        <li><b>제주회</b><span><em>첫째 주 목요일</em></span></li>
+        <li><b>청사회</b><span><em>둘째 주 금요일 (박,나,박)</em></span></li>
+        <li><b>정유회</b><span><em>셋째 주 화요일 (드비치 2부)</em></span></li>
+        <li><b>롯데회</b><span><em>셋째 주 일요일</em></span></li>
+        <li><b>의사회</b><span><em>넷째 주 토요일</em></span></li>
+        <li><b>수요회</b><span><em>매주 2, 3주 수요일 (박, 조, 김)</em></span></li>
+        <li><b>동친회</b><span><em>넷째 수요일 (저녁)</em></span></li>
+        <li><b>함중회</b><span><em>첫째 주 토요일</em></span></li>
+      </ul>
+    </section>
+    <section>
+      <h2>양도 현황</h2>
+      <div class="scroll">
+      <table>
+        <thead><tr><th rowspan="2"></th><th>양도가능<br>(주중/주말)</th><th>양도횟수<br>(주중/주말)</th><th rowspan="2">양도자</th></tr></thead>
+        <tbody>
+          <tr><th>노벨(고성)</th><td>6/6</td><td>5/3</td><td class="left">주중: 김진영, 옥길성, 박영욱, 그린24, 세무사<br>주말: 박봉열, 정성운, 김영일</td></tr>
+          <tr><th>포웰</th><td>1/1</td><td>0/0</td><td class="left">주중:<br>주말:</td></tr>
+          <tr><th>노벨(밀양)</th><td>5/2</td><td>1/0</td><td class="left">주중: 도진영<br>주말:</td></tr>
+          <tr><th>진주</th><td>2/1</td><td>0/0</td><td class="left">동반할인</td></tr>
+          <tr><th>드비치</th><td>2/2</td><td>0/0</td><td class="left">주중:<br>주말:</td></tr>
+          <tr><th>볼카노CC</th><td>4/4</td><td>0/0</td><td class="left">평일 55,000원 &nbsp; 주말 75,000원</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note">* 드비치 주중양도 133,000원</p>
+    </section>
+  </div>
+</div>
+
+<script>
+// kind: c=대표님, t=임시, v=손님방문, tr=양도(color: pink|green|blue)
+const C=(l,...x)=>({k:'c',l,x}), T=(...x)=>({k:'t',l:'임시',x}), V=(...x)=>({k:'v',l:'손님방문',x});
+const R=(l,color,...x)=>({k:'tr',l,color,x});
+const DATA={
+ 1:[T('노벨cc 08:34','충무코스"노캐디"')],
+ 2:[V('11:00 삼보 김주영 전무'),V('15:00 MNC솔루션 강근혁')],
+ 3:[C('대표님','그린24 (3조)','공룡코스 12:52'),R('양도확정①','green','그린24')],
+ 5:[C('대표님','제주회','창원cc 12:07','서코스 "캐디"')],
+ 8:[R('양도확정①','pink','노벨cc 08:34 박봉열','공룡코스"노캐디"')],
+ 9:[R('양도확정②','green','노벨cc 07:45 옥길성','충무코스"노캐디"')],
+ 10:[T('노벨cc 12:14','가야코스"노캐디"')],
+ 11:[C('대표님','수요회')],
+ 12:[T('노벨cc 12:10','가야코스"노캐디"')],
+ 13:[C('대표님','청사회','노벨cc 12:17','가야코스"노캐디"'),R('양도확정③','green','노벨cc 08:41 김진영','충무코스"캐디"')],
+ 14:[C('대표님','함중회','노벨cc 08:34','충무코스"노캐디"')],
+ 15:[C('대표님','롯데회'),R('양도확정②','pink','노벨cc 08:20 정성운','가야코스"노캐디"')],
+ 16:[R('양도확정④','green','노벨cc 07:45 박영욱','충무코스"캐디"')],
+ 17:[C('대표님','정유회'),T('노벨cc 12:31','공룡코스"노캐디"')],
+ 18:[C('대표님','수요회'),R('양도확정','blue','밀양노벨cc 08:20 도진영','힐코스 "캐디"')],
+ 19:[T('노벨cc 12:38','공룡코스"노캐디"')],
+ 20:[T('노벨cc 12:24','충무코스"노캐디"')],
+ 21:[C('대표님','이재준 선임연구원 결혼','리베라 컨벤션 7층 루벤스홀','11:20'),T('노벨cc 08:41','가야코스"노캐디"')],
+ 22:[C('대표님','의사회'),T('노벨cc 08:06','가야코스"노캐디"'),T('노벨cc 08:13','가야코스"노캐디"'),R('양도확정','blue','포웰cc 이희준')],
+ 24:[T('노벨cc 12:31','충무코스"노캐디"'),R('양도요청⑤','green','노벨cc 07:59 세무사')],
+ 25:[C('대표님','동친회(저녁식사)')],
+ 26:[C('대표님','제주회'),T('노벨cc 12:24','충무코스"노캐디"')],
+ 27:[C('대표님','제주투어','에어부산 07:55','호텔난타 체크인 15:00'),T('노벨cc 12:31','충무코스"노캐디"')],
+ 28:[C('대표님','제주투어')],
+ 29:[C('대표님','제주투어'),R('양도확정③','pink','노벨cc 김영일')],
+ 30:[C('대표님','제주투어','대한항공 16:20','호텔난타 체크아웃 11:00')]
+};
+// 노벨(고성) 양도: 주중 5회 / 주말 3회 사용 (가능 6/6) — 번호는 주중·주말 각각의 순번
+const PILL={'3양도확정①':'주중 1번째 · 남은 5','9양도확정②':'주중 2번째 · 남은 4','13양도확정③':'주중 3번째 · 남은 3','16양도확정④':'주중 4번째 · 남은 2','24양도요청⑤':'주중 5번째 · 남은 1',
+ '8양도확정①':'주말 1번째 · 남은 5','15양도확정②':'주말 2번째 · 남은 4','29양도확정③':'주말 3번째 · 남은 3'};
+const DOW=['일(Sun)','월(Mon)','화(Tue)','수(Wed)','목(Thu)','금(Fri)','토(Sat)'];
+const SHORT=['일','월','화','수','목','금','토'];
+const TODAY=9, START=0, DAYS=30; // 2026-11-01 is Sunday
+const esc=s=>s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+const cal=document.getElementById('cal');
+let h=DOW.map((d,i)=>`<div class="dow ${i==0?'sun':i==6?'sat':''}">${d}</div>`).join('');
+const total=Math.ceil((START+DAYS)/7)*7;
+for(let i=0;i<total;i++){
+  const d=i-START+1, w=i%7, cls=w==0?'sun':w==6?'sat':'';
+  if(d<1||d>DAYS){h+=`<div class="day empty none"></div>`;continue;}
+  const ev=DATA[d]||[];
+  let body='';
+  for(const e of ev){
+    const lines=e.x.map(t=>`<div>${esc(t)}</div>`).join('');
+    if(e.k==='tr'){
+      const pill=PILL[d+e.l]; const x=pill?`<span class="pill">${esc(pill)}</span>`:'';
+      body+=`<div class="tr ${e.color}"><div class="lbl">${esc(e.l)}${x}</div>${lines}</div>`;
+    }
+    else body+=`<div class="ev"><span class="chip ${e.k==='c'?'ceo':e.k==='t'?'tmp':'visit'}">${esc(e.l)}</span><div class="txt">${lines}</div></div>`;
+  }
+  const none=ev.length?'':' none';
+  h+=`<div class="day ${cls}${d===TODAY?' today':''}${none}"><div class="num">${d}<small>${SHORT[w]}요일</small></div>${body}</div>`;
+}
+cal.innerHTML=h;
+</script>
+
+</body>
+</html>
