@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>비서실 업무 계획</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--tx:#222;--mut:#777;--line:#e3e5ec;--pri:#4f46e5;--r:12px}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans KR","Malgun Gothic",sans-serif;background:var(--bg);color:var(--tx)}
+button,input,select,textarea{font:inherit}
+.hidden{display:none!important}
+#lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.lock-card{background:var(--card);padding:32px;border-radius:16px;box-shadow:0 8px 30px #0002;width:min(340px,90vw);text-align:center}
+.lock-card input{width:100%;padding:10px;margin:12px 0;border:1px solid var(--line);border-radius:8px}
+.btn{border:1px solid var(--line);background:var(--card);padding:8px 12px;border-radius:8px;cursor:pointer}
+.btn.primary{background:var(--pri);color:#fff;border-color:var(--pri)}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+header h1{font-size:18px;margin:0}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{padding:5px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:14px}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.summary div{background:var(--card);border-radius:var(--r);padding:12px;text-align:center}
+.summary b{display:block;font-size:22px}
+.layout{display:grid;grid-template-columns:1fr 320px;gap:12px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:var(--r);padding:12px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dow{text-align:center;font-size:13px;color:var(--mut);padding:4px}
+.day{min-height:84px;border:1px solid var(--line);border-radius:6px;padding:3px;cursor:pointer;overflow:hidden;font-size:11px}
+.day.other{opacity:.4}.day.today{border-color:var(--pri);border-width:2px}.day.sel{background:#eef}
+.day .n{font-size:12px;font-weight:700}
+.ev{border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.ev.done{opacity:.45;text-decoration:line-through}
+.item{border-bottom:1px solid var(--line);padding:8px 0;display:flex;gap:8px;align-items:flex-start}
+.item small{color:var(--mut)}
+.tag{font-size:11px;padding:1px 6px;border-radius:99px;color:#fff}
+.mnav{display:flex;gap:8px;align-items:center}
+.modal{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:40}
+.modal form{background:var(--card);padding:20px;border-radius:14px;width:min(420px,92vw);display:grid;gap:8px}
+.modal label{display:grid;gap:3px;font-size:13px;color:var(--mut)}
+.modal input,.modal select,.modal textarea{padding:8px;border:1px solid var(--line);border-radius:8px;color:var(--tx)}
+#sync{font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <form class="lock-card" id="lockForm">
+    <div style="font-size:36px">🔒</div>
+    <h2>비서실 업무 계획</h2>
+    <p>공유받은 비밀번호를 입력해 주세요.</p>
+    <input id="pw" type="password" placeholder="비밀번호" required>
+    <button class="btn primary" style="width:100%">들어가기</button>
+    <p id="lockMsg" style="color:#d33;font-size:13px"></p>
+  </form>
+</div>
+
+<header>
+  <h1>📅 비서실 업무 계획</h1>
+  <div class="mnav">
+    <button class="btn" id="prev">‹</button><strong id="mlabel"></strong>
+    <button class="btn" id="next">›</button><button class="btn" id="today">오늘</button>
+  </div>
+  <div><label>내 이름 <select id="me"></select></label> <span id="sync"></span></div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <button class="btn primary" data-add="task">+ 업무 추가</button>
+    <button class="btn" data-add="vac">🌴 휴가·부재</button>
+    <button class="btn" data-add="ceo">⭐ 대표님 일정</button>
+    <button class="btn" data-add="visit">🤝 손님 방문</button>
+    <button class="btn" data-add="report">📑 보고 일정</button>
+    <button class="btn" data-add="personal">📝 개인 업무 기록</button>
+    <button class="btn" data-add="note">📢 공지</button>
+    <button class="btn" id="csv">📥 엑셀(CSV) 다운로드</button>
+    <button class="btn" id="view">목록 보기</button>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="summary" id="summary"></div>
+
+  <div class="layout" id="calView">
+    <div class="card"><div class="grid" id="grid"></div></div>
+    <div>
+      <div class="card" id="dayPanel" style="margin-bottom:12px"></div>
+      <div class="card" id="notePanel" style="margin-bottom:12px"></div>
+    <div class="card" id="peoplePanel"></div>
+    </div>
+  </div>
+  <div class="card hidden" id="listView"></div>
+</div>
+
+<div id="modal" class="modal hidden"></div>
+
+<script>
+/* ===== 설정 (여기만 수정하세요) ===== */
+const CONFIG = {
+  TEAM: ["진슬기","허다교","김정화"],
+  // 비밀번호 SHA-256 해시. 현재 비밀번호는 별도 안내. 바꾸려면 README의 안내 참고
+  PW_HASH: "cf3caaee01b6f4307b73c943b5363f1fe8594f9d9fbe1dbe4870c4861259c4ec",
+  // 팀 공유용 Firebase Realtime Database 주소 (비워두면 이 브라우저에만 저장)
+  // 예: "https://내프로젝트-default-rtdb.firebaseio.com"
+  DB_URL: "https://office-plan-secretary-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+const CATS = {
+  "결재/문서":"#4f46e5","회의":"#0891b2","출장":"#d97706","행사":"#db2777",
+  "방문객/의전":"#7c3aed","차량/예약":"#059669","총무/구매":"#65a30d","기타":"#6b7280"
+};
+const REP={daily:"평일 매일",weekly:"매주",monthly:"매월"};
+const TYPE_COLOR={ceo:"#111827",vac:"#9ca3af",visit:"#f59e0b",report:"#dc2626",personal:"#0ea5e9"};
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let state={items:[]}, cur=new Date(); cur.setDate(1);
+let sel=ymd(new Date()), filter="전체", listMode=false;
+
+/* ===== 잠금 ===== */
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function unlock(){$("#lock").classList.add("hidden");start()}
+$("#lockForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(await sha($("#pw").value)===CONFIG.PW_HASH){try{localStorage.setItem("sec_ok",CONFIG.PW_HASH)}catch{};unlock()}
+  else $("#lockMsg").textContent="비밀번호가 맞지 않습니다.";
+};
+try{ if(localStorage.getItem("sec_ok")===CONFIG.PW_HASH) unlock(); }catch{}
+
+/* ===== 저장/동기화 ===== */
+function saveLocal(){try{localStorage.setItem("sec_data",JSON.stringify(state))}catch{}}
+async function load(){
+  try{const l=JSON.parse(localStorage.getItem("sec_data")||"null");if(l)state=l}catch{}
+  if(CONFIG.DB_URL){
+    try{const r=await fetch(CONFIG.DB_URL+"/state.json");const d=await r.json();
+      if(d&&d.items)state={items:d.items};$("#sync").textContent="🟢 공유 연결됨"}
+    catch{$("#sync").textContent="🔴 공유 연결 실패(로컬 저장)"}
+  }else $("#sync").textContent="💾 이 기기에만 저장";
+}
+async function save(){
+  saveLocal();
+  if(CONFIG.DB_URL){try{await fetch(CONFIG.DB_URL+"/state.json",{method:"PUT",body:JSON.stringify(state)})}catch{}}
+  render();
+}
+setInterval(async()=>{ if(!CONFIG.DB_URL||!$("#modal").classList.contains("hidden"))return;
+  try{const d=await(await fetch(CONFIG.DB_URL+"/state.json")).json();
+    if(d&&JSON.stringify(d.items)!==JSON.stringify(state.items)){state={items:d.items};saveLocal();render()}}catch{}},15000);
+
+/* ===== 데이터 ===== */
+// 개인 업무 기록은 해당 사람을 선택했을 때만 보임 (전체 보기에서는 숨김)
+const vis=()=>state.items.filter(i=>i.type==="personal"?filter===i.who:(filter==="전체"||i.who===filter||i.type==="note"||i.type==="visit"||i.type==="report"||i.type==="ceo"));
+function isDone(i,d){return i.repeat?(i.doneDates||[]).includes(d):!!i.done}
+function onDay(i,d){
+  if(i.type==="note")return false;
+  if(i.repeat&&i.type==="task"){
+    if(d<i.date||(i.until&&d>i.until))return false;
+    const a=new Date(i.date+"T00:00:00"),b=new Date(d+"T00:00:00");
+    if(i.repeat==="daily")return b.getDay()>0&&b.getDay()<6;
+    if(i.repeat==="weekly")return a.getDay()===b.getDay();
+    if(i.repeat==="monthly")return a.getDate()===b.getDate();
+  }
+  return i.date<=d&&(i.end||i.date)>=d}
+const PERSON_COLOR={"진슬기":"#4f46e5","허다교":"#059669","김정화":"#db2777"};
+const tagColor=i=>TYPE_COLOR[i.type]||(CATS[i.cat]||"#6b7280");
+// 달력 막대 색 = 담당자 색 (공지 등 담당자 없으면 분류 색)
+const color=i=>PERSON_COLOR[i.who]||tagColor(i);
+
+/* ===== 렌더 ===== */
+function render(){
+  $("#mlabel").textContent=`${cur.getFullYear()}년 ${cur.getMonth()+1}월`;
+  $("#chips").innerHTML=["전체",...CONFIG.TEAM].map(n=>`<button class="chip ${n===filter?"on":""}" data-f="${n}" style="${PERSON_COLOR[n]?`border-color:${PERSON_COLOR[n]};${n===filter?`background:${PERSON_COLOR[n]}`:`color:${PERSON_COLOR[n]}`}`:""}">${PERSON_COLOR[n]?"● ":""}${n}</button>`).join("");
+  const mk=ymd(cur).slice(0,7), items=state.items;
+  const tasks=items.filter(i=>i.type==="task"&&i.date.startsWith(mk));
+  const today=ymd(new Date());
+  $("#summary").innerHTML=
+   `<div><b>${tasks.length}</b>이번 달 업무</div>`+
+   `<div><b>${tasks.filter(t=>t.done).length}</b>완료</div>`+
+   `<div><b>${items.filter(t=>t.type==="task"&&!t.done&&!t.repeat&&t.date<today).length}</b>기한 지남</div>`+
+   `<div><b>${items.filter(i=>i.type==="vac"&&onDay(i,today)).map(i=>i.who).length}</b>오늘 부재</div>`;
+  listMode?renderList():renderCal();
+  $("#calView").classList.toggle("hidden",listMode);
+  $("#listView").classList.toggle("hidden",!listMode);
+  $("#view").textContent=listMode?"달력 보기":"목록 보기";
+  renderSide();
+}
+function renderCal(){
+  const first=new Date(cur), start=new Date(first); start.setDate(1-first.getDay());
+  let h=["일","월","화","수","목","금","토"].map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);const k=ymd(d);
+    const evs=vis().filter(x=>onDay(x,k));
+    h+=`<div class="day ${d.getMonth()!==cur.getMonth()?"other":""} ${k===ymd(new Date())?"today":""} ${k===sel?"sel":""}" data-d="${k}">
+      <div class="n">${d.getDate()}</div>
+      ${evs.slice(0,3).map(e=>`<div class="ev ${isDone(e,k)?"done":""}" style="background:${color(e)}">${{ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"}[e.type]||""}${esc(e.who&&(e.type==="task"||e.type==="vac")?e.who[0]+" ":"")}${esc(e.title)}</div>`).join("")}
+      ${evs.length>3?`<div style="color:var(--mut)">+${evs.length-3}</div>`:""}</div>`;
+  }
+  $("#grid").innerHTML=h;
+}
+function itemRow(i,d=sel){
+  const lbl={task:i.cat||"업무",vac:i.vacType||"휴가",ceo:"대표님",visit:"손님 방문",report:"보고",personal:"개인 기록",note:"공지"}[i.type];
+  return `<div class="item">
+    ${i.type==="task"?`<input type="checkbox" data-done="${i.id}" data-day="${d}" ${isDone(i,d)?"checked":""}>`:""}
+    <div style="flex:1"><span class="tag" style="background:${tagColor(i)}">${esc(lbl)}</span>
+      <b style="${isDone(i,d)?"text-decoration:line-through;color:var(--mut)":""}">${esc(i.title)}</b>
+      ${i.priority==="높음"?"🔥":""}<br>
+      <small>${i.who?`<span style="color:${PERSON_COLOR[i.who]};font-weight:700">● ${esc(i.who)}</span>`:""} ${i.date?"· "+i.date+(i.end&&i.end!==i.date?" ~ "+i.end:""):""} ${i.time?"· "+esc(i.time):""}</small>
+      ${i.visitor||i.place?`<br><small>🤝 ${esc(i.visitor||"")} ${i.place?"@ "+esc(i.place):""}</small>`:""}
+      ${i.target?`<br><small>📑 ${esc(i.target)}</small>`:""}
+      ${i.repeat?`<br><small>🔁 ${REP[i.repeat]}${i.until?" (~"+i.until+")":""}</small>`:""}
+      ${i.deputy?`<br><small>🔄 대직: <b style="color:${PERSON_COLOR[i.deputy]||"inherit"}">${esc(i.deputy)}</b></small>`:""}
+      ${(i.checks||[]).length?`<div style="margin-top:4px"><small>☑ ${i.checks.filter(c=>c.d).length}/${i.checks.length}</small>`+i.checks.map((c,n)=>`<div><label style="font-size:13px"><input type="checkbox" data-chk="${i.id}:${n}" ${c.d?"checked":""}> <span style="${c.d?"text-decoration:line-through;color:var(--mut)":""}">${esc(c.t)}</span></label></div>`).join("")+`</div>`:""}
+      ${i.memo?`<br><small>${esc(i.memo)}</small>`:""}</div>
+    <button class="btn" data-edit="${i.id}">✎</button></div>`;
+}
+function renderSide(){
+  const ds=vis().filter(i=>onDay(i,sel));
+  $("#dayPanel").innerHTML=`<h3 style="margin-top:0">${sel}</h3>`+(ds.map(x=>itemRow(x)).join("")||`<small>일정이 없습니다.</small>`)+
+    `<br><button class="btn primary" data-add="task" data-date="${sel}">+ 이 날짜에 추가</button>`;
+  const notes=state.items.filter(i=>i.type==="note");
+  $("#peoplePanel").innerHTML=`<h3 style="margin-top:0">👥 인원별 해야 할 일</h3>`+CONFIG.TEAM.map(n=>{
+    const t=state.items.filter(i=>i.type==="task"&&i.who===n&&(i.repeat||!i.done)).sort((a,b)=>a.date.localeCompare(b.date));
+    return `<div style="margin-bottom:10px"><b style="color:${PERSON_COLOR[n]}">● ${n}</b> <small>(${t.length}건)</small>`+
+      (t.slice(0,6).map(i=>`<div style="font-size:13px;padding:2px 0 2px 12px;border-left:3px solid ${PERSON_COLOR[n]}">${i.priority==="높음"?"🔥":""}${esc(i.title)} <small style="color:var(--mut)">${i.repeat?"🔁 "+REP[i.repeat]:i.date.slice(5)+(i.date<ymd(new Date())?" ⚠":"")}</small></div>`).join("")||`<div style="font-size:13px;color:var(--mut);padding-left:12px">남은 업무 없음</div>`)+
+      (t.length>6?`<div style="font-size:12px;color:var(--mut);padding-left:12px">+${t.length-6}건 더</div>`:"")+`</div>`}).join("");
+  $("#notePanel").innerHTML=`<h3 style="margin-top:0">📢 공지</h3>`+(notes.map(x=>itemRow(x)).join("")||`<small>공지가 없습니다.</small>`);
+}
+function renderList(){
+  const m=ymd(cur).slice(0,7);
+  const rows=vis().filter(i=>i.type!=="note"&&(i.date.startsWith(m)||(i.end||"").startsWith(m))).sort((a,b)=>a.date.localeCompare(b.date));
+  $("#listView").innerHTML=rows.map(x=>itemRow(x,x.date)).join("")||"<small>이번 달 항목이 없습니다.</small>";
+}
+
+/* ===== 입력 모달 ===== */
+const TITLES={ceo:"대표님 일정",task:"업무",vac:"휴가·부재",visit:"손님 방문",report:"보고 일정",personal:"개인 업무 기록",note:"공지"};
+function openForm(type,id,date){
+  const it=state.items.find(x=>x.id===id)||{type,date:date||sel,who:$("#me").value||CONFIG.TEAM[0],priority:"보통"};
+  type=it.type;
+  const opt=(arr,v)=>arr.map(a=>`<option ${a===v?"selected":""}>${a}</option>`).join("");
+  $("#modal").innerHTML=`<form>
+    <h3 style="margin:0">${TITLES[type]} ${id?"수정":"추가"}</h3>
+    <label>제목<input name="title" required value="${esc(it.title||"")}"></label>
+    ${type!=="note"?`<label>시작일<input type="date" name="date" required value="${it.date}"></label>
+    <label>종료일(선택)<input type="date" name="end" value="${it.end||""}"></label>`:""}
+    ${["task","vac","visit","report","personal"].includes(type)?`<label>${type==="visit"||type==="report"?"담당자(응대/준비)":"담당자"}<select name="who">${opt(CONFIG.TEAM,it.who)}</select></label>`:""}
+    ${type==="task"?`<label>분류<select name="cat">${opt(Object.keys(CATS),it.cat)}</select></label>
+      <label>우선순위<select name="priority">${opt(["보통","높음","낮음"],it.priority)}</select></label>`:""}
+    ${type==="vac"?`<label>구분<select name="vacType">${opt(["연차","반차(오전)","반차(오후)","외근","교육","병가","기타"],it.vacType)}</select></label>`:""}
+    ${type==="task"?`<label>반복<select name="repeat"><option value="">반복 안 함</option>${Object.entries(REP).map(([k,v])=>`<option value="${k}" ${it.repeat===k?"selected":""}>${v}</option>`).join("")}</select></label>
+      <label>반복 종료일(선택)<input type="date" name="until" value="${it.until||""}"></label>`:""}
+    ${type==="vac"?`<label>대직자(업무 대신 맡는 사람)<select name="deputy"><option value="">없음</option>${CONFIG.TEAM.map(n=>`<option ${n===it.deputy?"selected":""}>${n}</option>`).join("")}</select></label>`:""}
+    ${["task","visit","report","ceo"].includes(type)?`<label>체크리스트 (한 줄에 하나)<textarea name="checklist" rows="3" placeholder="예: 다과 준비&#10;회의실 세팅">${esc((it.checks||[]).map(c=>c.t).join("\n"))}</textarea></label>`:""}
+    ${type==="visit"||type==="report"||type==="ceo"?`<label>시간<input name="time" placeholder="예: 14:00" value="${esc(it.time||"")}"></label>`:""}
+    ${type==="visit"?`<label>방문자(회사/성함)<input name="visitor" value="${esc(it.visitor||"")}"></label>
+      <label>장소<input name="place" placeholder="예: 대회의실" value="${esc(it.place||"")}"></label>`:""}
+    ${type==="report"?`<label>보고 대상·내용<input name="target" value="${esc(it.target||"")}"></label>`:""}
+    <label>메모<textarea name="memo" rows="2">${esc(it.memo||"")}</textarea></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      ${id?`<button type="button" class="btn" id="del" style="margin-right:auto;color:#d33">삭제</button>`:""}
+      <button type="button" class="btn" id="cancel">취소</button><button class="btn primary">저장</button></div></form>`;
+  $("#modal").classList.remove("hidden");
+  const f=$("#modal form");
+  $("#cancel").onclick=()=>$("#modal").classList.add("hidden");
+  if(id)$("#del").onclick=()=>{if(confirm("삭제할까요?")){state.items=state.items.filter(x=>x.id!==id);$("#modal").classList.add("hidden");save()}};
+  f.onsubmit=e=>{e.preventDefault();
+    const v=Object.fromEntries(new FormData(f));
+    if(v.end&&v.end<v.date)v.end=v.date;
+    Object.assign(it,v,{type});
+    if("checklist" in v){const old=it.checks||[];
+      it.checks=v.checklist.split("\n").map(s=>s.trim()).filter(Boolean).map(t=>({t,d:!!(old.find(o=>o.t===t)||{}).d}));delete it.checklist}
+    if(!id){it.id=crypto.randomUUID();it.done=false;if(type==="note")it.date=ymd(new Date());state.items.push(it)}
+    $("#modal").classList.add("hidden");save()};
+}
+
+/* ===== 이벤트 ===== */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-add],[data-edit],[data-f],[data-d]");
+  if(!t)return;
+  if(t.dataset.add)return openForm(t.dataset.add,null,t.dataset.date);
+  if(t.dataset.edit)return openForm(null,t.dataset.edit);
+  if(t.dataset.f){filter=t.dataset.f;return render()}
+  if(t.dataset.d){sel=t.dataset.d;return render()}
+});
+document.addEventListener("change",e=>{
+  const dt=e.target.dataset;
+  if(dt.done){const i=state.items.find(x=>x.id===dt.done);
+    if(i.repeat){const s=new Set(i.doneDates||[]);e.target.checked?s.add(dt.day):s.delete(dt.day);i.doneDates=[...s]}
+    else i.done=e.target.checked;
+    save()}
+  if(dt.chk){const [id,n]=dt.chk.split(":");const i=state.items.find(x=>x.id===id);i.checks[+n].d=e.target.checked;save()}
+});
+$("#prev").onclick=()=>{cur.setMonth(cur.getMonth()-1);render()};
+$("#next").onclick=()=>{cur.setMonth(cur.getMonth()+1);render()};
+$("#today").onclick=()=>{cur=new Date();cur.setDate(1);sel=ymd(new Date());render()};
+$("#view").onclick=()=>{listMode=!listMode;render()};
+$("#me").onchange=()=>{try{localStorage.setItem("sec_me",$("#me").value)}catch{}};
+$("#csv").onclick=()=>{
+  const head=["구분","제목","담당자","분류/구분","시작일","종료일","완료","우선순위","메모"];
+  const rows=state.items.map(i=>[i.type,i.title,i.who||"",i.cat||i.vacType||"",i.date||"",i.end||"",i.done?"Y":"",i.priority||"",i.memo||""]);
+  const csv="﻿"+[head,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download=`비서실_업무_${ymd(new Date())}.csv`;a.click();
+};
+async function start(){
+  $("#me").innerHTML=CONFIG.TEAM.map(n=>`<option>${n}</option>`).join("");
+  try{const m=localStorage.getItem("sec_me");if(m)$("#me").value=m}catch{}
+  await load();render();
+}
+</script>
+</body>
+</html>
