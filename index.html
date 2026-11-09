@@ -90,7 +90,7 @@ header h1{font-size:18px;margin:0}
   </div>
   <div class="chips" id="chips"></div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin:-4px 0 12px;color:var(--mut)">
-    <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f6bf26;vertical-align:-1px"></i> 대표님 일정</span>
+    <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1a73e8;vertical-align:-1px"></i> 대표님 일정</span>
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f6bf26;vertical-align:-1px"></i> 손님 방문</span>
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#8e8e93;vertical-align:-1px"></i> 보고 일정</span>
     <span>· 그 외(업무·휴가)는 담당자 색</span>
@@ -126,9 +126,9 @@ const CATS = {
   "전자입찰":"#0d9488","식당":"#ea580c","일일매입":"#ca8a04","수주대장":"#be123c","기타":"#6b7280"
 };
 const REP={daily:"평일 매일",weekly:"매주",monthly:"매월"};
-const TYPE_COLOR={ceo:"#f6bf26",vac:"#9ca3af",visit:"#f6bf26",report:"#8e8e93",personal:"#0ea5e9"};
+const TYPE_COLOR={ceo:"#1a73e8",vac:"#9ca3af",visit:"#f6bf26",report:"#8e8e93",personal:"#0ea5e9"};
 // 노란색 막대 위 글씨는 어두운 색으로 (흰 글씨는 안 읽힘)
-const txtColor=i=>["ceo","visit"].includes(i.type)?"#3b2f00":"#fff";
+const txtColor=i=>i.type==="visit"?"#3b2f00":"#fff";
 const $=s=>document.querySelector(s);
 const pad=n=>String(n).padStart(2,"0");
 const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
