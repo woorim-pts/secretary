@@ -107,6 +107,7 @@ header h1{font-size:18px;margin:0}
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1a73e8;vertical-align:-1px"></i> 대표님 일정</span>
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f6bf26;vertical-align:-1px"></i> 손님 방문</span>
     <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#8e8e93;vertical-align:-1px"></i> 보고 일정</span>
+    <span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ea580c;vertical-align:-1px"></i> 3명 공동 업무</span>
     <span>· 그 외(업무·휴가)는 담당자 색</span>
   </div>
   <div class="summary" id="summary"></div>
@@ -182,7 +183,7 @@ setInterval(async()=>{ if(!CONFIG.DB_URL||!$("#modal").classList.contains("hidde
 
 /* ===== 데이터 ===== */
 // 개인 업무 기록은 해당 사람을 선택했을 때만 보임 (전체 보기에서는 숨김)
-const vis=()=>state.items.filter(i=>i.type==="personal"?filter===i.who:(filter==="전체"||i.who===filter||i.type==="note"||i.type==="visit"||i.type==="report"||i.type==="ceo"));
+const vis=()=>state.items.filter(i=>i.type==="personal"?filter===i.who:(filter==="전체"||i.who===filter||i.who==="전체"||i.type==="note"||i.type==="visit"||i.type==="report"||i.type==="ceo"));
 // 마감 D-day 배지: 미완료 업무 중 마감이 14일 이내(또는 지난 것). 3일 이내는 빨간색
 function dday(i){
   if(i.type!=="task"||i.repeat||i.done)return "";
@@ -203,7 +204,9 @@ function onDay(i,d){
     if(i.repeat==="monthly")return a.getDate()===b.getDate();
   }
   return i.date<=d&&(i.end||i.date)>=d}
-const PERSON_COLOR={"진슬기":"#4f46e5","허다교":"#059669","김정화":"#db2777"};
+// "전체" = 3명 모두의 공동 업무 (주황색)
+const PERSON_COLOR={"진슬기":"#4f46e5","허다교":"#059669","김정화":"#db2777","전체":"#ea580c"};
+const whoShort=w=>w==="전체"?"공동":(w||"")[0];
 const tagColor=i=>TYPE_COLOR[i.type]||(CATS[i.cat]||"#6b7280");
 // 달력 막대 색 = 담당자 색 (공지 등 담당자 없으면 분류 색)
 // 대표님 일정·손님 방문·보고 일정은 담당자와 상관없이 고정 색, 나머지는 담당자 색
@@ -243,7 +246,7 @@ function renderCal(){
     h+=`<div class="day ${d.getMonth()!==cur.getMonth()?"other":""} ${k===ymd(new Date())?"today":""} ${k===sel?"sel":""}" data-d="${k}">
       <div class="n">${d.getDate()}</div>
       ${evs.slice(0,6).map(e=>{
-        const label=({ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"}[e.type]||"")+(e.who&&["task","vac","visit","report"].includes(e.type)?e.who[0]+" ":"")+e.title;
+        const label=({ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"}[e.type]||"")+(e.who&&["task","vac","visit","report"].includes(e.type)?whoShort(e.who)+" ":"")+e.title;
         return e.tstart
           ?`<div class="ev t ${isDone(e,k)?"done":""}" data-edit="${e.id}" title="${esc(e.title)}"><i style="background:${color(e)}"></i>${ko(e.tstart)} ${esc(label)}</div>`
           :`<div class="ev ${isDone(e,k)?"done":""}" data-edit="${e.id}" title="${esc(e.title)}" style="background:${color(e)};color:${txtColor(e)}">${esc(label)}</div>`}).join("")}
@@ -259,7 +262,7 @@ function weekLabel(){const s=weekStart(),e=new Date(s);e.setDate(s.getDate()+6);
   return `${s.getMonth()+1}/${s.getDate()} ~ ${e.getMonth()+1}/${e.getDate()}`}
 function shiftWeek(n){const d=new Date(sel+"T00:00:00");d.setDate(d.getDate()+n);sel=ymd(d);cur=new Date(d.getFullYear(),d.getMonth(),1)}
 const ICON={ceo:"⭐",vac:"🌴",visit:"🤝",report:"📑",personal:"📝"};
-function evLabel(e){return (ICON[e.type]||"")+(e.who&&["task","vac","visit","report"].includes(e.type)?e.who[0]+" ":"")+e.title}
+function evLabel(e){return (ICON[e.type]||"")+(e.who&&["task","vac","visit","report"].includes(e.type)?whoShort(e.who)+" ":"")+e.title}
 function renderWeek(){
   const s=weekStart(), days=[...Array(7)].map((_,i)=>{const d=new Date(s);d.setDate(s.getDate()+i);return d});
   const hrs=[];for(let h=WK_H0;h<WK_H1;h++)hrs.push(h);
@@ -298,7 +301,7 @@ function itemRow(i,d=sel){
     <div style="flex:1"><span class="tag" style="background:${tagColor(i)}">${esc(lbl)}</span>
       <b style="${isDone(i,d)?"text-decoration:line-through;color:var(--mut)":""}">${esc(i.title)}</b>
       ${i.priority==="높음"?"🔥":""}${isDone(i,d)?"":dday(i)}<br>
-      <small>${i.who?`<span style="color:${PERSON_COLOR[i.who]};font-weight:700">● ${esc(i.who)}</span>`:""} ${i.date?"· "+i.date+(i.end&&i.end!==i.date?" ~ "+i.end:""):""} ${fmtTime(i)?"· "+esc(fmtTime(i)):""}</small>
+      <small>${i.who?`<span style="color:${PERSON_COLOR[i.who]};font-weight:700">● ${esc(i.who==="전체"?"3명 모두(공동)":i.who)}</span>`:""} ${i.date?"· "+i.date+(i.end&&i.end!==i.date?" ~ "+i.end:""):""} ${fmtTime(i)?"· "+esc(fmtTime(i)):""}</small>
       ${i.visitor||i.place?`<br><small>🤝 ${esc(i.visitor||"")} ${i.place?"@ "+esc(i.place):""}</small>`:""}
       ${i.target?`<br><small>📑 ${esc(i.target)}</small>`:""}
       ${i.repeat?`<br><small>🔁 ${REP[i.repeat]}${i.until?" (~"+i.until+")":""}</small>`:""}
@@ -314,9 +317,9 @@ function renderSide(){
   const notes=state.items.filter(i=>i.type==="note");
   $("#todayBox").innerHTML=`<div style="font-size:12px;color:var(--mut)">${sel===ymd(new Date())?"📌 오늘 일정":"선택한 날짜 일정"}</div>`+$("#dayPanel").innerHTML;
   $("#peoplePanel").innerHTML=`<h3 style="margin-top:0">👥 인원별 해야 할 일</h3>`+CONFIG.TEAM.map(n=>{
-    const t=state.items.filter(i=>i.type==="task"&&i.who===n&&(i.repeat||!i.done)).sort((a,b)=>a.date.localeCompare(b.date));
+    const t=state.items.filter(i=>i.type==="task"&&(i.who===n||i.who==="전체")&&(i.repeat||!i.done)).sort((a,b)=>a.date.localeCompare(b.date));
     return `<div style="margin-bottom:10px"><b style="color:${PERSON_COLOR[n]}">● ${n}</b> <small>(${t.length}건)</small>`+
-      (t.slice(0,6).map(i=>`<div style="font-size:13px;padding:2px 0 2px 12px;border-left:3px solid ${PERSON_COLOR[n]}">${i.priority==="높음"?"🔥":""}${esc(i.title)}${dday(i)} <small style="color:var(--mut)">${i.repeat?"🔁 "+REP[i.repeat]:i.date.slice(5)+(i.date<ymd(new Date())?" ⚠":"")}</small></div>`).join("")||`<div style="font-size:13px;color:var(--mut);padding-left:12px">남은 업무 없음</div>`)+
+      (t.slice(0,6).map(i=>`<div style="font-size:13px;padding:2px 0 2px 12px;border-left:3px solid ${PERSON_COLOR[n]}">${i.who==="전체"?`<b style="color:#ea580c">[공동]</b> `:""}${i.priority==="높음"?"🔥":""}${esc(i.title)}${dday(i)} <small style="color:var(--mut)">${i.repeat?"🔁 "+REP[i.repeat]:i.date.slice(5)+(i.date<ymd(new Date())?" ⚠":"")}</small></div>`).join("")||`<div style="font-size:13px;color:var(--mut);padding-left:12px">남은 업무 없음</div>`)+
       (t.length>6?`<div style="font-size:12px;color:var(--mut);padding-left:12px">+${t.length-6}건 더</div>`:"")+`</div>`}).join("");
   $("#notePanel").innerHTML=`<h3 style="margin-top:0">📢 공지</h3>`+(notes.map(x=>itemRow(x)).join("")||`<small>공지가 없습니다.</small>`);
 }
@@ -345,7 +348,7 @@ function openForm(type,id,date){
     <label>제목<input name="title" required value="${esc(it.title||"")}"></label>
     ${type!=="note"?`<label>시작일<input type="date" name="date" required value="${it.date}"></label>
     <label>종료일(선택)<input type="date" name="end" value="${it.end||""}"></label>`:""}
-    ${["task","vac","visit","report","personal"].includes(type)?`<label>${type==="visit"||type==="report"?"담당자(응대/준비)":"담당자"}<select name="who">${opt(CONFIG.TEAM,it.who)}</select></label>`:""}
+    ${["task","vac","visit","report","personal"].includes(type)?`<label>${type==="visit"||type==="report"?"담당자(응대/준비)":"담당자"}<select name="who">${opt(CONFIG.TEAM,it.who)}${["task","visit","report"].includes(type)?`<option value="전체" ${it.who==="전체"?"selected":""}>전체 (3명 모두)</option>`:""}</select></label>`:""}
     ${type==="task"?`<label>분류<select name="cat">${opt(Object.keys(CATS),it.cat)}</select></label>
       <label>우선순위<select name="priority">${opt(["보통","높음","낮음"],it.priority)}</select></label>`:""}
     ${type==="vac"?`<label>구분<select name="vacType">${opt(["연차","반차(오전)","반차(오후)","외근","교육","병가","기타"],it.vacType)}</select></label>`:""}
